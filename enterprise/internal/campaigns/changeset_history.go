@@ -121,10 +121,8 @@ func computeHistory(ch *campaigns.Changeset, ce ChangesetEvents) (changesetHisto
 				continue
 			}
 
-			author, err := e.ReviewAuthor()
-			if err != nil {
-				return nil, err
-			}
+			author := e.ReviewAuthor()
+			// If the user has been deleted, skip their reviews, as they don't count towards the final state anymore.
 			if author == "" {
 				continue
 			}
@@ -160,10 +158,8 @@ func computeHistory(ch *campaigns.Changeset, ce ChangesetEvents) (changesetHisto
 		case campaigns.ChangesetEventKindBitbucketServerUnapproved,
 			campaigns.ChangesetEventKindBitbucketServerDismissed,
 			campaigns.ChangesetEventKindGitLabUnapproved:
-			author, err := e.ReviewAuthor()
-			if err != nil {
-				return nil, err
-			}
+			author := e.ReviewAuthor()
+			// If the user has been deleted, skip their reviews, as they don't count towards the final state anymore.
 			if author == "" {
 				continue
 			}

@@ -692,16 +692,6 @@ func (c *Client) LoadPullRequests(ctx context.Context, prs ...*PullRequest) erro
 				continue
 			}
 			return err
-
-			// if gqlErrs, ok := err.(graphqlErrors); ok {
-			// 	for _, err2 := range gqlErrs {
-			// 		if err2.Type == graphqlErrTypeNotFound && len(err2.Path) > 1 {
-			// 			fmt.Printf("ERROR IS HERE %+v\n", err2)
-
-			// 			notFound = append(notFound, asd)
-			// 		}
-			// 	}
-			// }
 		}
 	}
 	if len(notFound.Numbers) > 0 {
@@ -766,6 +756,25 @@ func (c *Client) loadPullRequests(ctx context.Context, prs ...*PullRequest) erro
 
 	err := c.requestGraphQL(ctx, q.String(), nil, &results)
 	if err != nil {
+		if gqlErrs, ok := err.(graphqlErrors); ok {
+			var notFound []int
+			for _, err2 := range gqlErrs {
+				if err2.Type == graphqlErrTypeNotFound && len(err2.Path) == 2 {
+					repoPath, ok := err2.Path[0].(string)
+					if !ok {
+						continue
+					}
+					prPath, ok := err2.Path[1].(string)
+					if !ok {
+						continue
+					}
+					notFound = append(notFound, int(labeled[repoPath].PRs[prPath].Number))
+				}
+			}
+			if len(notFound) > 0 {
+				return ErrPullRequestsNotFound{Numbers: notFound}
+			}
+		}
 		return err
 	}
 

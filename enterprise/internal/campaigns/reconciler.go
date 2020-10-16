@@ -99,7 +99,22 @@ func (r *reconciler) process(ctx context.Context, tx *Store, ch *campaigns.Chang
 func (r *reconciler) syncChangeset(ctx context.Context, tx *Store, ch *campaigns.Changeset) error {
 	rstore := repos.NewDBStore(tx.Handle().DB(), sql.TxOptions{})
 
-	if err := SyncChangesets(ctx, rstore, tx, r.sourcer, ch); err != nil {
+	if err := SyncChangesets(ctx, rstore, tx, r.sourcer, true, ch); err != nil {
+		if _, ok := err.(repos.ChangesetsNotFoundError); ok {
+			if ch.Unsynced {
+				errStr := err.Error()
+				ch.FailureMessage = &errStr
+				ch.Unsynced = false
+				ch.ReconcilerState = campaigns.ReconcilerStateErrored
+				// Never retry again.
+				ch.NumFailures = reconcilerMaxNumRetries + 1
+				ch.FinishedAt = time.Now()
+			} else {
+				ch.SetDeleted()
+			}
+
+			return tx.UpdateChangeset(ctx, ch)
+		}
 		return errors.Wrapf(err, "syncing changeset with external ID %q failed", ch.ExternalID)
 	}
 

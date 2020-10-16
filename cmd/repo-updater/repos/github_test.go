@@ -363,14 +363,22 @@ func TestGithubSource_LoadChangesets(t *testing.T) {
 			},
 		},
 		{
-			name: "not found",
+			name: "not-found",
 			cs: []*Changeset{
 				{
 					Repo:      &Repo{Metadata: &github.Repository{NameWithOwner: "sourcegraph/sourcegraph"}},
 					Changeset: &campaigns.Changeset{ExternalID: "100000"},
 				},
+				{
+					Repo:      &Repo{Metadata: &github.Repository{NameWithOwner: "sourcegraph/sourcegraph"}},
+					Changeset: &campaigns.Changeset{ExternalID: "200000"},
+				},
 			},
-			err: `Changeset with external ID "100000" not found`,
+			err: `Changesets with the following external IDs could not be found:
+	* "100000"
+	* "200000"
+
+`,
 		},
 	}
 

@@ -209,9 +209,11 @@ func (s GithubSource) CloseChangeset(ctx context.Context, c *Changeset) error {
 // LoadChangesets loads the latest state of the given Changesets from the codehost.
 func (s GithubSource) LoadChangesets(ctx context.Context, cs ...*Changeset) error {
 	prs := make([]*github.PullRequest, len(cs))
+	csByNumber := make(map[int64]*Changeset, len(cs))
 	for i := range cs {
-		repo := cs[i].Repo.Metadata.(*github.Repository)
-		number, err := strconv.ParseInt(cs[i].ExternalID, 10, 64)
+		c := cs[i]
+		repo := c.Repo.Metadata.(*github.Repository)
+		number, err := strconv.ParseInt(c.ExternalID, 10, 64)
 		if err != nil {
 			return errors.Wrap(err, "parsing changeset external id")
 		}
@@ -220,23 +222,38 @@ func (s GithubSource) LoadChangesets(ctx context.Context, cs ...*Changeset) erro
 			RepoWithOwner: repo.NameWithOwner,
 			Number:        number,
 		}
+		csByNumber[number] = c
 	}
 
+	notFoundByNumber := make(map[int64]struct{})
+	notFound := make([]*Changeset, 0)
 	err := s.client.LoadPullRequests(ctx, prs...)
 	if err != nil {
-		if _, ok := err.(github.ErrPullRequestsNotFound); ok {
-			// TODO: Find correct subset of failed changesets.
-			return ChangesetsNotFoundError{Changesets: cs}
+		if e, ok := err.(github.ErrPullRequestsNotFound); ok {
+			for _, number := range e.Numbers {
+				notFoundByNumber[int64(number)] = struct{}{}
+				if _, ok := csByNumber[int64(number)]; !ok {
+					return err
+				}
+				notFound = append(notFound, csByNumber[int64(number)])
+			}
+		} else {
+			return err
 		}
-		return err
 	}
 
 	for i := range cs {
+		if _, ok := notFoundByNumber[prs[i].Number]; ok {
+			continue
+		}
 		if err := cs[i].SetMetadata(prs[i]); err != nil {
 			return errors.Wrap(err, "setting changeset metadata")
 		}
 	}
 
+	if len(notFound) > 0 {
+		return ChangesetsNotFoundError{Changesets: notFound}
+	}
 	return nil
 }
 

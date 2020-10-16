@@ -128,7 +128,7 @@ func testGitHubWebhook(db *sql.DB, userID int32) func(*testing.T) {
 		})
 		defer state.Unmock()
 
-		err = SyncChangesets(ctx, repoStore, store, repos.NewSourcer(cf), changeset)
+		err = SyncChangesets(ctx, repoStore, store, repos.NewSourcer(cf), true, changeset)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -310,7 +310,7 @@ func testBitbucketWebhook(db *sql.DB, userID int32) func(*testing.T) {
 		})
 		defer state.Unmock()
 
-		err = SyncChangesets(ctx, repoStore, store, repos.NewSourcer(cf), changesets...)
+		err = SyncChangesets(ctx, repoStore, store, repos.NewSourcer(cf), true, changesets...)
 		if err != nil {
 			t.Fatal(err)
 		}

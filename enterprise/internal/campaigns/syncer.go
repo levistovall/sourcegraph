@@ -513,13 +513,13 @@ func (s *ChangesetSyncer) SyncChangeset(ctx context.Context, id int64) error {
 	}
 
 	sourcer := repos.NewSourcer(s.HTTPFactory)
-	return syncChangesets(ctx, s.ReposStore, s.SyncStore, sourcer, cs)
+	return syncChangesets(ctx, s.ReposStore, s.SyncStore, sourcer, false, cs)
 }
 
 // SyncChangesets refreshes the metadata of the given changesets and
 // updates them in the database.
-func SyncChangesets(ctx context.Context, repoStore RepoStore, syncStore SyncStore, sourcer repos.Sourcer, cs ...*campaigns.Changeset) (err error) {
-	return syncChangesets(ctx, repoStore, syncStore, sourcer, cs...)
+func SyncChangesets(ctx context.Context, repoStore RepoStore, syncStore SyncStore, sourcer repos.Sourcer, failOnNotFound bool, cs ...*campaigns.Changeset) (err error) {
+	return syncChangesets(ctx, repoStore, syncStore, sourcer, failOnNotFound, cs...)
 }
 
 func syncChangesets(
@@ -527,6 +527,7 @@ func syncChangesets(
 	repoStore RepoStore,
 	syncStore SyncStore,
 	sourcer repos.Sourcer,
+	failOnNotFound bool,
 	cs ...*campaigns.Changeset,
 ) (err error) {
 	if len(cs) == 0 {
@@ -538,12 +539,12 @@ func syncChangesets(
 		return err
 	}
 
-	return syncChangesetsWithSources(ctx, syncStore, bySource)
+	return syncChangesetsWithSources(ctx, syncStore, bySource, failOnNotFound)
 }
 
 // syncChangesetsWithSources refreshes the metadata of the given changesets
 // with the given ChangesetSources and updates them in the database.
-func syncChangesetsWithSources(ctx context.Context, store SyncStore, bySource []*SourceChangesets) (err error) {
+func syncChangesetsWithSources(ctx context.Context, store SyncStore, bySource []*SourceChangesets, failOnNotFound bool) (err error) {
 	var (
 		events []*campaigns.ChangesetEvent
 		cs     []*campaigns.Changeset
@@ -555,7 +556,9 @@ func syncChangesetsWithSources(ctx context.Context, store SyncStore, bySource []
 		err := s.LoadChangesets(ctx, s.Changesets...)
 		if err != nil {
 			notFoundErr, ok := err.(repos.ChangesetsNotFoundError)
-			if !ok {
+			// TODO: failOnNotFound is a hack, so we can mark a not found changeset as not found
+			// in the reconciler, rather than setting it to deleted on the code host.
+			if !ok || failOnNotFound {
 				return err
 			}
 			notFound = notFoundErr.Changesets

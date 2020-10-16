@@ -552,5 +552,9 @@ type ErrPullRequestsNotFound struct {
 }
 
 func (e ErrPullRequestsNotFound) Error() string {
-	return fmt.Sprintf("GitHub pull requests not found: %v", e.Numbers)
+	numberStrings := make([]string, len(e.Numbers))
+	for i, n := range e.Numbers {
+		numberStrings[i] = strconv.Itoa(n)
+	}
+	return fmt.Sprintf("GitHub pull requests not found: %v", strings.Join(numberStrings, ", "))
 }

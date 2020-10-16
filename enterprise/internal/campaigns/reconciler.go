@@ -162,11 +162,17 @@ func (r *reconciler) publishChangeset(ctx context.Context, tx *Store, ch *campai
 		return errors.Wrapf(err, "decorating body for changeset %d", ch.ID)
 	}
 
-	// If we're running this method a second time, because we failed due to an
-	// ephemeral error, there's a race condition here.
-	// It's possible that `CreateChangeset` doesn't return the newest head ref
-	// commit yet, because the API of the codehost doesn't return it yet.
-	exists, err := ccs.CreateChangeset(ctx, cs)
+	var exists bool
+	draftCcs, ok := ccs.(repos.DraftChangesetSource)
+	if spec.Spec.Published.Draft() && ok {
+		exists, err = draftCcs.CreateDraftChangeset(ctx, cs)
+	} else {
+		// If we're running this method a second time, because we failed due to an
+		// ephemeral error, there's a race condition here.
+		// It's possible that `CreateChangeset` doesn't return the newest head ref
+		// commit yet, because the API of the codehost doesn't return it yet.
+		exists, err = ccs.CreateChangeset(ctx, cs)
+	}
 	if err != nil {
 		return errors.Wrap(err, "creating changeset")
 	}
@@ -508,7 +514,7 @@ func determineAction(ctx context.Context, tx *Store, ch *campaigns.Changeset) (r
 
 	switch ch.PublicationState {
 	case campaigns.ChangesetPublicationStateUnpublished:
-		if curr.Spec.Published.True() {
+		if curr.Spec.Published.True() || curr.Spec.Published.Draft() {
 			action.actionType = actionPublish
 		}
 

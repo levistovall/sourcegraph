@@ -152,19 +152,40 @@ func (s GithubSource) ExternalServices() ExternalServices {
 }
 
 var _ ChangesetSource = GithubSource{}
+var _ DraftChangesetSource = GithubSource{}
 
-// CreateChangeset creates the given *Changeset in the code host.
+// CreateChangeset creates the given *Changeset on the code host.
 func (s GithubSource) CreateChangeset(ctx context.Context, c *Changeset) (bool, error) {
+	return s.createChangeset(ctx, c, func(c *Changeset, repo *github.Repository) *github.CreatePullRequestInput {
+		return &github.CreatePullRequestInput{
+			RepositoryID: repo.ID,
+			Title:        c.Title,
+			Body:         c.Body,
+			HeadRefName:  git.AbbreviateRef(c.HeadRef),
+			BaseRefName:  git.AbbreviateRef(c.BaseRef),
+		}
+	})
+}
+
+// CreateDraftChangeset creates the given *Changeset on the code host in draft mode.
+func (s GithubSource) CreateDraftChangeset(ctx context.Context, c *Changeset) (bool, error) {
+	return s.createChangeset(ctx, c, func(c *Changeset, repo *github.Repository) *github.CreatePullRequestInput {
+		return &github.CreatePullRequestInput{
+			RepositoryID: repo.ID,
+			Title:        c.Title,
+			Body:         c.Body,
+			HeadRefName:  git.AbbreviateRef(c.HeadRef),
+			BaseRefName:  git.AbbreviateRef(c.BaseRef),
+			Draft:        true,
+		}
+	})
+}
+
+func (s GithubSource) createChangeset(ctx context.Context, c *Changeset, prInput func(c *Changeset, repo *github.Repository) *github.CreatePullRequestInput) (bool, error) {
 	var exists bool
 	repo := c.Repo.Metadata.(*github.Repository)
 
-	pr, err := s.client.CreatePullRequest(ctx, &github.CreatePullRequestInput{
-		RepositoryID: repo.ID,
-		Title:        c.Title,
-		Body:         c.Body,
-		HeadRefName:  git.AbbreviateRef(c.HeadRef),
-		BaseRefName:  git.AbbreviateRef(c.BaseRef),
-	})
+	pr, err := s.client.CreatePullRequest(ctx, prInput(c, repo))
 
 	if err != nil {
 		if err != github.ErrPullRequestAlreadyExists {

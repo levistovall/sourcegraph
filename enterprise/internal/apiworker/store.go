@@ -2,6 +2,7 @@ package apiworker
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/apiworker/apiclient"
 	"github.com/sourcegraph/sourcegraph/internal/workerutil"
@@ -20,6 +21,10 @@ type QueueStore interface {
 }
 
 var _ workerutil.Store = &storeShim{}
+
+func (s *storeShim) QueuedCount(ctx context.Context, extraArguments interface{}) (int, error) {
+	return 0, errors.New("unimplemented")
+}
 
 func (s *storeShim) Dequeue(ctx context.Context, extraArguments interface{}) (workerutil.Record, workerutil.Store, bool, error) {
 	var job apiclient.Job

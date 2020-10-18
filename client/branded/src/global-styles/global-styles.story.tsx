@@ -15,6 +15,7 @@ import { Menu, MenuButton, MenuList, MenuLink } from '@reach/menu-button'
 import 'storybook-addon-designs'
 import { BrandedStory } from '../components/BrandedStory'
 import { CodeSnippet } from '../components/CodeSnippet'
+import codeSnippetStyles from '../components/CodeSnippet.scss'
 
 const semanticColors = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'merged'] as const
 
@@ -265,6 +266,7 @@ add('Code', () => (
             <code>{'<CodeSnippet />'}</code> for these uses.
         </p>
         <CodeSnippet code="property: 1" language="yaml" />
+        <style>{codeSnippetStyles}</style>
     </>
 ))
 

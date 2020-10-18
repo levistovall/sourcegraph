@@ -169,7 +169,7 @@ const parsePosition = (string: string): Position => {
  */
 export function parseRepoURI(uri: RepoURI): ParsedRepoURI {
     const parsed = new URL(uri)
-    const repoName = parsed.hostname + parsed.pathname
+    const repoName = parsed.hostname + parsed.pathname.replace(/^\/\//, '')
     const revision = parsed.search.slice('?'.length) || undefined
     let commitID: string | undefined
     if (revision?.match(/[\dA-f]{40}/)) {
